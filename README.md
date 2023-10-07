@@ -5,3 +5,6 @@ python script to interact with a Sierra Instruments Smart Trak 50 mass flow cont
 		print(s.GetFlow())
 
 Usage is pretty straight forward, see function names for available queries.
+
+https://www.sierrainstruments.com/products/50series.html
+
