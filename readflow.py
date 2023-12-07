@@ -366,6 +366,62 @@ class PolyScienceCA10:
 		ret = self.readline()
 		return int(ret)
 
+class PowerCycler1:
+	def __init__(self, port):
+		self._port = port
+		self._serial = None
+
+	@property
+	def Port(self): return self._port
+
+	def _open(self):
+		if not self._serial:
+			self._serial = serial.Serial(self._port, 9600, timeout=5)
+
+	def _close(self):
+		self._serial.close()
+		self._serial = None
+
+	@contextlib.contextmanager
+	def open(port):
+		s = None
+		try:
+			s = PowerCycler1(port)
+			s._open()
+			yield s
+		finally:
+			if s:
+				s._close()
+
+	def write(self, msg):
+		"""Encode into ASCII and write over serial"""
+		if msg.endswith('\n'):
+			m = msg.encode('ascii')
+		else:
+			m = (msg + '\n').encode('ascii')
+
+		self._serial.write(m)
+
+	def readline(self):
+		"""Read a line and decode from ASCII, and return the message"""
+		r = self._serial.readline()
+		z = r.decode('ascii').strip('\n')
+
+		return z
+
+	# --------------------------------------------------------
+	# Functions
+
+	def Cycle(self, N):
+		"""
+		Cycle the power for relay N (0, 1, 2, or 3)
+		"""
+
+		if N < 0 or N > 3:
+			raise ValueError("Can only cycle power on relays 0, 1, 2, or 3; got %s" % N)
+
+		return self.write("cycle[%d]" % N)
+
 def TestPolyScienceCA10():
 	with PolyScienceCA10.open('/dev/ttyUSB0') as s:
 		ret = s.PowerStatus()
@@ -463,6 +519,6 @@ def TestSmartTrak50():
 if __name__ == '__main__':
 	# Test use by querying for all the things
 
-	TestPolyScienceCA10()
-	#TestSmartTrak50()
+	#TestPolyScienceCA10()
+	TestSmartTrak50()
 
