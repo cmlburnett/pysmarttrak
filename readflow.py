@@ -463,6 +463,7 @@ def TestSmartTrak50():
 if __name__ == '__main__':
 	# Test use by querying for all the things
 
-	TestPolyScienceCA10()
+	#TestPolyScienceCA10()
 	#TestSmartTrak50()
+	print(SmartTrak50.CalculateLRC('?Setr'))
 
