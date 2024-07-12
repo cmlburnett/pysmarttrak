@@ -366,6 +366,129 @@ class PolyScienceCA10:
 		ret = self.readline()
 		return int(ret)
 
+class PowerCycler1:
+	"""
+	All commands are echo'ed back and uses LF only at 9600 8N1 serial.
+	Commands recognized:
+		help		Returns help info included version
+		cycle[0]	Cycles relay 0
+		cycle[1]	Cycles relay 1
+		cycle[2]	Cycles relay 2
+		cycle[3]	Cycles relay 3
+
+	Connect loads to the normally-closed (NC) so that the device is on all the time, and
+	cycling the power turns it off then back on after 2.5 seconds.
+	"""
+
+	def __init__(self, port):
+		self._port = port
+		self._serial = None
+
+	@property
+	def Port(self): return self._port
+
+	def _open(self):
+		if not self._serial:
+			self._serial = serial.Serial(self._port, 9600, timeout=1)
+
+	def _close(self):
+		self._serial.close()
+		self._serial = None
+
+	@contextlib.contextmanager
+	def open(port):
+		s = None
+		try:
+			s = PowerCycler1(port)
+			s._open()
+			# First command is dropped and I don't know why
+			# So send a non-sense thing then flush the send buffer on the Arduino
+			# And then should be able to interact appropriately with Help() or Cycle() functions.
+			s.Echo("test")
+			s.flush()
+			yield s
+		finally:
+			if s:
+				s._close()
+
+	def write(self, msg):
+		"""Encode into ASCII and write over serial"""
+		if msg.endswith('\n'):
+			m = msg.encode('ascii')
+		else:
+			m = (msg + '\n').encode('ascii')
+
+		self._serial.write(m)
+
+	def flush(self):
+		while True:
+			ret = self._serial.read()
+			if not len(ret):
+				return
+
+	def readline(self):
+		"""Read a line and decode from ASCII, and return the message"""
+		read = []
+		while True:
+			ret = self._serial.read()
+			if not len(ret):
+				break
+			elif ret == '\n':
+				break
+			else:
+				read.append(ret.decode('ascii'))
+
+		if not len(read):
+			return None
+		r = ''.join(read)
+		z = r.strip('\n')
+
+		return z
+
+	# --------------------------------------------------------
+	# Functions
+
+	def Echo(self, t):
+		"""Should return whatever is sent"""
+		self.write(t)
+		ret = []
+		while True:
+			z = self.readline()
+			if z is None:
+				break
+			ret.append(z)
+
+		return "\n".join(ret)
+
+	def Help(self):
+		"""
+		Get help information including the version information.
+		Reminder that all commands are echoed first including "help" to first return line is "help\n" then
+		 a series of lines starting with # that are information.
+		"""
+		self.write("help")
+		ret = []
+		while True:
+			z = self.readline()
+			if z is None:
+				break
+			ret.append(z)
+
+		return "\n".join(ret)
+
+	def Cycle(self, N):
+		"""
+		Cycle the power for relay N (0, 1, 2, or 3).
+		Reminder that all commands are echoed first.
+		"""
+
+		if N < 0 or N > 3:
+			raise ValueError("Can only cycle power on relays 0, 1, 2, or 3; got %s" % N)
+
+		self.write("cycle[%d]" % N)
+		ret = self.readline()
+		return ret
+
 def TestPolyScienceCA10():
 	with PolyScienceCA10.open('/dev/ttyUSB0') as s:
 		ret = s.PowerStatus()
@@ -464,6 +587,5 @@ if __name__ == '__main__':
 	# Test use by querying for all the things
 
 	#TestPolyScienceCA10()
-	#TestSmartTrak50()
-	print(SmartTrak50.CalculateLRC('?Setr'))
+	TestSmartTrak50()
 
